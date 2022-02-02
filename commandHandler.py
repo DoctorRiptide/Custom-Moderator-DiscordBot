@@ -3,7 +3,7 @@ from discord.ext.commands import Bot
 from discord.ext import commands
 import asyncio
 import datetime
-from keep_alive import keep_alive
+from keepAlive import keep_alive
 
 Client = discord.Client()
 client = commands.Bot(command_prefix = ["$"])
