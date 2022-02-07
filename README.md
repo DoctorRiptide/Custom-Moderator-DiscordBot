@@ -4,6 +4,8 @@
 
 ___
 
+https://discord.com/oauth2/authorize?client_id=935941259808366613&permissions=1133584&scope=bot
+
 #### Information ####
 
 - This is the product of a freelance assignment.
