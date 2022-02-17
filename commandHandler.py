@@ -7,6 +7,16 @@ import time
 
 # Code #
 
+"""
+CHANGE MODERATOR CHANNEL HERE
+"""
+
+moderatorChannel = 'moderation'
+
+"""
+MODERATOR CHANNEL ABOVE
+"""
+
 adminRole = ["Admin", "admin"]
 
 Client = discord.Client()
@@ -24,10 +34,6 @@ async def on_ready():
 
   for guild in client.guilds:
     print("Connected to server: {}".format(guild))
-
-@client.event
-async def on_member_join(ctx, member):
-  await ctx.send("{} has joined {}!!! ".format(member.mention, member.guild.name))
 		
 @client.event
 async def on_message(ctx):
@@ -39,7 +45,7 @@ async def on_message(ctx):
 
   channel=discord.utils.get(
     ctx.guild.channels,
-    name="message-log"
+    name=moderatorChannel
   )
 
   if ctx.author == client.user:
@@ -48,25 +54,26 @@ async def on_message(ctx):
   if channel == None:
     return
   
-  fullMessage = "**Message Content : **" + ctx.content
+  fullMessage = "**Message Content : ** *" + ctx.content + '*'
   ch1 = discord.utils.get(ctx.guild.channels, name=str(ctx.channel))
-  channel_ = '<#' + str(ch1) + '>'
 
   embed=discord.Embed(
     title=str(ctx.author), 
-    description=fullMessage)
+    description=fullMessage,
+    color = 0x2ecc71)
 
   embed.add_field(
     name="Message Channel",
-    value=channel_,
+    value=ch1.mention,
     inline=False
   )
+
+  if ctx.channel == channel:
+    return
 
   await channel.send(embed=embed)
 
   await client.process_commands(ctx)
-
-
 
 @client.event
 async def on_reaction_add(reaction, user):
@@ -94,8 +101,48 @@ async def on_reaction_add(reaction, user):
     return
 
   await user.add_roles(role)
+
+@client.event
+async def on_message_edit(message_before, message_after):
+  embed = discord.Embed(title = "Message Edit",
+  description = f'Channel : {message_after.channel.mention} ::: Author : {message_before.author.mention}',
+  color = 0xe67e22)
+
+  embed.add_field(name = 'Message Before',
+  value = message_before.content)
+
+  embed.add_field(name = 'Message After',
+  value = message_after.content)
+
+  channel = discord.utils.get(message_before.guild.channels, name = moderatorChannel)
+
+  await channel.send(embed=embed)
+
+@client.event
+async def on_message_delete(message):
+
+  embed = discord.Embed(title = "Message Delete",
+  description = f'Author : {message.author} ::: Channel {message.channel.mention}',
+  color = 0xe74c3c)
+
+  embed.add_field(name = 'Message Deleted : ',
+  value = message.content)
+
+  channel = discord.utils.get(message.guild.channels, name = moderatorChannel)
+
+  await channel.send(embed=embed)
     
 """ Commands """
+
+@client.event
+async def on_member_join(member):
+  embed = discord.Embed(title = member.author,
+  description = 'Joined Server',
+  color = 0x2ecc71)
+
+  channel = discord.utils.get(member.guild.channels, name = moderatorChannel)
+
+  await channel.send(embed=embed)
 
 @client.command(aliases=['helps'])
 async def help(ctx):
@@ -112,8 +159,7 @@ async def help(ctx):
     inline=True
   )
   await ctx.channel.send(embed=embed)
-
-
+	
 @client.command(aliases=["purge", "delete"])
 @commands.has_permissions(administrator=True)
 async def clear(ctx, *, length=100):
@@ -141,7 +187,8 @@ async def verify(ctx, *, channelNameInput=None):
     )
 
   if channel == None:
-    channel.edit(name="verify")
+    await ctx.channel.edit(name="verify")
+    channel = ctx.channel
 
   await clear(ctx, length=100000)
 
@@ -175,7 +222,5 @@ async def verify(ctx, *, channelNameInput=None):
 
   await channel.send("Hey newcomer! Please react here to verify yourself to access all the other channels. :smiley:")
 
-
-
-keep_alive()
+keep_alive()    
 client.run('TOKEN GOES HERE')
