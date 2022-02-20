@@ -3,7 +3,6 @@
 import discord
 from discord.ext import commands
 from keep_alive import keep_alive
-import schedule
 
 """
 CHANGE THESE VARIABLES TO SUIT YOUR SERVER
@@ -13,11 +12,11 @@ moderatorChannel = 'moderation'
 
 adminRole = ["Admin", "admin"]
 
-verifiedRole = 'verified'
+verifiedRole = 'verify'
 
 prefix = '+'
 
-CLIENT_SECRET = 'Client secret goes here'
+welcomeChannel = 'welcome'
 
 """
 END OF CHANGEABLE VARS
@@ -31,19 +30,121 @@ Client = discord.Client()
 
 client = commands.Bot(command_prefix = [prefix], intents=intents)
 
+client.remove_command(name='help')
+
+"""
+Help Command
+"""
+@client.command()
+async def help(ctx):
+
+  embed = discord.Embed(
+    title = "Help",
+    description = "Prefix : ***{}*** \n Verified Role : ***{}*** \n Moderator Channel : ***{}*** \n Admin Roles : ***{}***".format(prefix, verifiedRole, moderatorChannel, adminRole),
+    color = 0x2ecc71
+  )
+
+  embed.add_field(
+    name = "Logging (Not a command)",
+    value = "Logging all messages, edits, deletes etc in {}".format(moderatorChannel),
+    inline = False
+  )
+  
+  embed.add_field(
+    name = f'{prefix}clear 100',
+    value = "Will clear a set amount of messages",
+    inline = False
+  )
+
+  embed.add_field(
+    name = f'{prefix}captcha_all',
+    value = 'Will give all members of the guild the verified role',
+    inline = False
+  )
+
+  embed.add_field(
+    name = f'{prefix}purge_routine',
+    value = 'Will kick all without the verified role',
+    inline = False
+  )
+
+  await ctx.channel.send(embed=embed)
+
+
 """ Events """
-
-# On member join
-
-@client.event
-async def on_member_join(member):
-  await captcha(ctx=member)
 
 # On ready
 
 @client.event
 async def on_ready():
   print("Ready")
+
+# On member join
+
+@client.event
+async def on_member_join(member):
+
+  await captcha(ctx=member)
+
+  channel = discord.utils.get(
+    member.guild.channels,
+    name = welcomeChannel
+  )
+
+  modChannel = discord.utils.get(
+    member.guild.channels,
+    name = moderatorChannel
+  )
+
+  if channel == None:
+    channel = discord.utils.get(
+    member.guild.channels,
+    name = 'general'
+  )
+
+  embed = discord.Embed(
+    title = "Welcome!",
+    description = "Welcome {} to SupraVision! Familiarise yourself with our goals and objectives at https://physix.world - Don't forget to verify! **You have 120 seconds to verify** ".format(member.mention),
+    color = 0x2ecc71
+  )
+  
+  await channel.send(embed=embed)
+
+  if modChannel != None:
+    await modChannel.send(embed=embed)
+
+# On member leave
+
+@client.event
+async def on_member_remove(member):
+
+  channel = discord.utils.get(
+    member.guild.channels,
+    name = welcomeChannel
+  )
+
+  modChannel = discord.utils.get(
+    member.guild.channels,
+    name = moderatorChannel
+  )
+
+  if channel == None:
+    channel = discord.utils.get(
+    member.guild.channels,
+    name = 'general'
+    )
+
+  embed = discord.Embed(
+    title = "Member Leave",
+    description = f'{member.name} Left {member.guild.name}',
+    color = 0x2ecc71
+  )
+
+  await channel.send(embed=embed)
+
+  if modChannel != None:
+    await modChannel.send(embed=embed)
+
 
 # On message
 
@@ -58,6 +159,9 @@ async def on_message(ctx):
   if ctx.channel.guild == None:
     return
 
+  if ctx.content.startswith('help'):
+    await ctx.channel.send(f'Try using the {prefix}help command!')
+
   """ Message Log. Setup to record all messages to the channel messgae-log - Can be changed."""
 
   channel=discord.utils.get(
@@ -70,18 +174,19 @@ async def on_message(ctx):
 
   if channel == None:
     return
-  
-  fullMessage = "**Message Content : ** *" + ctx.content + '*'
 
   ch1 = discord.utils.get(
     ctx.guild.channels, 
     name=str(ctx.channel)
     )
 
+  print(ctx.content)
+
   embed=discord.Embed(
     title=str(ctx.author), 
-    description=fullMessage,
-    color = 0x2ecc71)
+    description=str(ctx.content),
+    color = 0x2ecc71
+    )
 
   embed.add_field(
     name="Message Channel",
@@ -98,6 +203,9 @@ async def on_message(ctx):
 
 @client.event
 async def on_message_edit(message_before, message_after):
+
+  if 'Direct Message ' in str(message_before.channel):
+    return
 
   embed = discord.Embed(
     title = "Message Edit",
@@ -128,14 +236,17 @@ async def on_message_edit(message_before, message_after):
 async def on_message_delete(message):
 
   embed = discord.Embed(
-    title = "Message Delete",
-    description = f'Author : {message.author} ::: Channel {message.channel.mention}',
+    title = "Message Deleted",
+    description = f'Channel : {message.channel.mention} ::: Author {message.author}',
     color = 0xe74c3c
     )
 
-  embed.add_field(
-    name = 'Message Deleted : ',
-    value = message.content
+  content1 = ':' + str(message.content)
+
+  if message.content != None:
+    embed.add_field(
+      name = 'Content : ',
+      value = str(content1)
     )
 
   channel = discord.utils.get(
@@ -145,106 +256,111 @@ async def on_message_delete(message):
 
   await channel.send(embed=embed)
 
+# On role create
 
-@client.command()
-async def purgeRoutine(ctx):
+@client.event
+async def on_guild_role_create(role):
 
-  for member in ctx.guild.members:
+  embed = discord.Embed(
+    title = "Role Created",
+    description = f'Role **{role.name} created!',
+    color = 0x2ecc71
+  )
 
-    role = discord.utils.get(
-      ctx.guild.roles, 
-      name=verifiedRole
-      )
+  channel1 = discord.utils.get(
+    role.guild.channels,
+    name = moderatorChannel
+  )
 
-    user = discord.utils.get(
-      ctx.guild.members, 
-      name=member.name
-      )
+  await channel1.send(embed=embed)
 
-    if role in user.roles:
-      continue
+# On role delete
 
-    else:
-      ctx.guild.kick(user)
+@client.event
+async def on_guild_role_delete(role):
 
-      user.send("You have been kicked for failing to verify")
+  embed = discord.Embed(
+    title = "Role Deleted",
+    description = f'Role **{role.name} deleted!',
+    color = 0xe74c3c
+  )
 
-      print(f'{user} has been kicked')
+  channel1 = discord.utils.get(
+    role.guild.channels,
+    name = moderatorChannel
+  )
+
+  await channel1.send(embed=embed)
+
+# On role update
+
+@client.event
+async def on_guild_role_update(role_before, role_after):
+
+  embed = discord.Embed(
+    title = "Role Update",
+    description = f'Role changed from **{role_before}** to **{role_after}**',
+    color = 0xe67e22
+  )
+
+  channel1 = discord.utils.get(
+    role_after.guild.channels,
+    name = moderatorChannel
+  )
+
+  await channel1.send(embed=embed)
+
+# On member ban
+
+@client.event
+async def on_member_ban(guild, user):
+
+  embed = discord.Embed(
+    title = "Member Banned",
+    description = f'{user.name} has been banned!',
+    color = 0xe74c3c
+  )
+
+  channel1 = discord.utils.get(
+    guild.channels,
+    name = moderatorChannel
+  )
+
+  await channel1.send(embed=embed)
+
+# On member ban
+
+@client.event
+async def on_member_unban(guild, user):
+
+  embed = discord.Embed(
+    title = "Member Unbanned",
+    description = f'{user.name} has been unbanned!',
+    color = 0x2ecc71
+  )
+
+  channel1 = discord.utils.get(
+    guild.channels,
+    name = moderatorChannel
+  )
+
+  await channel1.send(embed=embed)
 
 """
 Commands
 """
 
-# Captcha Command
-
-@client.command()
-async def captcha(ctx):
-
-  print('Captcha Occured')
-
-  guild = ctx.guild
-
-  user = ctx
-
-  print(user)
-
-  role1 = discord.utils.get(
-    ctx.guild.roles, 
-    name=verifiedRole)
-
-  if role1 in ctx.roles:
-    return
-
-  await user.send("https://cdn.discordapp.com/attachments/943967436905009235/944051776468971520/unknown.png")
-
-  await user.send("Please select an option. If answered correctly you will be verified - if not, you will be kicked. Feel free to check out physix.world")
-
-  response = await client.wait_for('message')
-
-  if response.author == client.user:
-    response = await client.wait_for('message')
-
-  if str(response.content.lower()) == 'a':
-    await user.send("Correct! You have now been verified and given a role to prove it ;)")
-
-    role = discord.utils.get(
-      ctx.guild.roles, 
-      name=verifiedRole
-      )
-    
-    if role == None:
-      await guild.create_role(name=verifiedRole)
-
-    await user.add_roles(role)
-
-    print("Role added")
-
-  else:
-    await user.send('Man, you got that incorrect. Maybe check out the website and familiarise yourself with https://physix.world before you join. You will now be kicked. Try again later :(')
-
-    await guild.kick(user)
-
-    print(f'Kicked {user}')
-
-# Give everyone the verified role
+# Clear
 
 @client.command()
 @commands.has_permissions(administrator=True)
-async def captcha_all(ctx):
+async def clear(ctx, limit=100):
 
-  for member in ctx.guild.members:
-    role = discord.utils.get(
-      ctx.guild.roles, 
-      name = verifiedRole
-      )
+  await ctx.channel.send("Clearing {} messages :)".format(limit))
 
-    await member.add_roles(role)
+  limit = int(limit) + 1
 
-"""
-Schedules
-"""
-
-schedule.every().day.at("00:00").do(purgeRoutine)
-
+  await ctx.channel.purge(limit=limit)
+  
 keep_alive()
 client.run(CLIENT_SECRET)
