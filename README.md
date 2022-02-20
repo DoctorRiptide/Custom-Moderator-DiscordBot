@@ -1,6 +1,6 @@
-# Discord Moderator #
+# Discord Logger #
 
-### Carsey's Discord Moderator ###
+### Logger Bot ###
 
 ___
 
@@ -8,12 +8,10 @@ https://discord.com/oauth2/authorize?client_id=935941259808366613&permissions=11
 
 #### Information ####
 
-- This is the product of a freelance assignment.
+- This is the product of a freelance assignment. But stripped down to the core logging elements
 - Open for public usage
 
 ___
 
-#### Useful Commands ####
-Property of SupraVision
-
+Property of DoctorRiptide
 ___
